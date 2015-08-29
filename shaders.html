@@ -1,0 +1,63 @@
+<script type="x-shader/x-vertex">
+	#define USE_MAP
+	#define USE_NORMALMAP
+	#define USE_MASK_COLORS
+</script>
+<script type="x-shader/x-fragment">
+	uniform vec3 diffuse;
+	uniform float opacity;
+	
+	uniform sampler2D maskMap, patternMap;
+	uniform vec4 aColorShadow, aColorMidtone, aColorHighlight,
+	bColorShadow, bColorMidtone, bColorHighlight,
+	cColorShadow, cColorMidtone, cColorHighlight;
+
+	vec4 colorBalance(vec4 textureColor, vec4 shadowsShift, vec4 midtonesShift, vec4 highlightsShift) {
+		vec4 lightness = textureColor;
+
+		float a = 0.25;
+		float b = 0.333;
+		float scale = 0.7;
+
+		vec4 shadows = shadowsShift * (clamp((lightness - b) / -a + 0.5, 0.0, 1.0) * scale);
+		vec4 midtones = midtonesShift * (clamp((lightness - b) / a + 0.5, 0.0, 1.0) *
+			clamp((lightness + b - 1.0) / -a + 0.5, 0.0, 1.0) * scale);
+		vec4 highlights = highlightsShift * (clamp((lightness + b - 1.0) / a + 0.5, 0.0, 1.0) * scale);
+
+		vec4 newColor = textureColor + shadows + midtones + highlights;
+		return vec4(newColor.rgb, textureColor.w);
+	}
+	
+	void main() {
+		vec3 outgoingLight = vec3( 0.0 );
+		vec4 diffuseColor = vec4( diffuse, opacity );
+		
+		vec4 maskA = texture2D(maskMap, vec2(vUv.x / 2.0, vUv.y));
+		vec4 maskB = texture2D(maskMap, vec2(0.5 + (vUv.x / 2.0), vUv.y));
+		#ifdef USE_MASK_COLORS
+			if (maskB.r > 0.0) {
+				diffuseColor = colorBalance(diffuseColor, aColorShadow, aColorMidtone, aColorHighlight);
+			}
+			if (maskB.g > 0.0) {
+				diffuseColor = colorBalance(diffuseColor, bColorShadow, bColorMidtone, bColorHighlight);
+			}
+			if (maskB.b > 0.0) {
+				diffuseColor = colorBalance(diffuseColor, cColorShadow, cColorMidtone, cColorHighlight);
+			}
+		#else
+			if (maskB.r > 0.0) {
+				diffuseColor = vec4(1.0, 0.0, 0.0, 1.0);
+			}
+			if (maskB.g > 0.0) {
+				diffuseColor = vec4(0.0, 1.0, 0.0, 1.0);
+			}
+			if (maskB.b > 0.0) {
+				diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
+			}
+		#endif
+		
+		outgoingLight = diffuseColor.rgb;
+		
+		gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+	}
+</script>

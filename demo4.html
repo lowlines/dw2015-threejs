@@ -1,0 +1,119 @@
+<html>
+<head>
+	<title>Demo #4 | Three.js</title>
+	<style> body { margin: 0; } canvas { width: 100%; height: 100% } </style>
+</head>
+<body>
+<script src="_js/three.min.js"></script>
+<script src="_js/stats.min.js"></script>
+<script src="_js/three.orbitcontrols.js"></script>
+<script>
+	var helper;
+	
+	// Create the scene
+	var scene = new THREE.Scene();
+	
+	scene.fog = new THREE.Fog( 0x666666, 2000, 10000 );
+	
+	// Set up the viewport to fill the screen
+	var camera = new THREE.PerspectiveCamera( 30, window.innerWidth/window.innerHeight, 1, 10000 );
+	camera.position.z = 2200;
+	var renderer = new THREE.WebGLRenderer();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.setClearColor( scene.fog.color );
+	renderer.shadowMapEnabled = true;
+	document.body.appendChild( renderer.domElement );
+	
+	// LIGHTS
+	var ambient = new THREE.AmbientLight( 0x222222 );
+	scene.add( ambient );
+
+
+	var light = new THREE.DirectionalLight( 0xebf3ff, 1.6 );
+	light.position.set( 0, 140, 500 ).multiplyScalar( 1.1 );
+	scene.add( light );
+
+	light.castShadow = true;
+
+	light.shadowMapWidth = 1024;
+	light.shadowMapHeight = 2048;
+
+	var d = 390;
+
+	light.shadowCameraLeft = -d;
+	light.shadowCameraRight = d;
+	light.shadowCameraTop = d * 1.5;
+	light.shadowCameraBottom = -d;
+
+	light.shadowCameraFar = 3500;
+
+	// Load Knight model
+	var loader = new THREE.JSONLoader();
+	loader.load('_models/knight.js', function(geometry, materials) {
+		for (var i=0; i<materials.length; i++) {
+			var m = materials[i];
+			m.skinning = true;
+		}
+		var mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials));
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
+		
+		var x = 0;
+		var y = -350;
+		var z = -300;
+		var s = 60;
+		
+		geometry.computeBoundingBox();
+		var bb = geometry.boundingBox;
+		mesh.position.set( x, y - bb.min.y * s, z );
+		mesh.scale.set( s, s, s );
+		
+		scene.add(mesh);
+		
+		helper = new THREE.SkeletonHelper( mesh );
+		helper.material.linewidth = 3;
+		//helper.visible = true;
+		scene.add( helper );
+		
+		render();
+	});
+	
+	// Setup statistic information
+	var stats = new Stats();
+	stats.domElement.style.position = 'absolute';
+	stats.domElement.style.top = '0px';
+	stats.domElement.style.zIndex = 100;
+	document.body.appendChild( stats.domElement );
+
+	// Set up an animation loop
+	function animate() {
+		requestAnimationFrame( animate );
+		controls.update();
+		
+		if ( helper !== undefined ) helper.update();
+		
+		render();
+		
+		stats.update();
+	}
+	function render() {
+		renderer.render(scene, camera);
+	};
+	
+	function onWindowResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+
+		renderer.setSize( window.innerWidth, window.innerHeight );
+	}
+	window.addEventListener( 'resize', onWindowResize, false );
+	
+	// Setup Orbit Controls
+	var controls = new THREE.OrbitControls( camera );
+	controls.damping = 0.2;
+	controls.addEventListener( 'change', render );
+	
+	animate();
+</script>
+</body>
+</html>
